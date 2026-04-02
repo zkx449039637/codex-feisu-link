@@ -1,0 +1,27 @@
+{
+  "machine": {
+    "name": "replace_me",
+    "repo_root": "replace_me",
+    "python_executable": "python",
+    "codex_executable": "node",
+    "codex_script": "replace_me"
+  },
+  "bot": {
+    "app_id": "replace_me",
+    "app_secret": "replace_me",
+    "base_url": "https://open.feishu.cn",
+    "receive_id_type": "chat_id",
+    "allowed_user_ids": [
+      "replace_me"
+    ]
+  },
+  "projects": {
+    "pod-theme-system": {
+      "name": "pod-theme-system",
+      "workdir": "replace_me",
+      "branch_prefix": "codex/",
+      "description": "Remote-controlled local Codex project.",
+      "max_parallel_tasks": 1
+    }
+  }
+}

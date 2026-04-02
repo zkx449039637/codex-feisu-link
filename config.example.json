@@ -1,0 +1,29 @@
+{
+  "state_file": "D:\\Codex Projects\\codex-feisu-link\\.state\\state.json",
+  "runtime_root": "D:\\Codex Projects\\codex-feisu-link\\.runtime",
+  "runtime_state_file": "D:\\Codex Projects\\codex-feisu-link\\.runtime\\runtime-state.json",
+  "runtime_log_dir": "D:\\Codex Projects\\codex-feisu-link\\.runtime\\logs",
+  "runtime_artifact_dir": "D:\\Codex Projects\\codex-feisu-link\\.runtime\\artifacts",
+  "codex_executable": "codex",
+  "codex_arguments": [],
+  "command_timeout_seconds": 600,
+  "runtime_poll_interval_seconds": 2.0,
+  "feishu": {
+    "app_id": "cli_replace_me",
+    "app_secret": "replace_me",
+    "base_url": "https://open.feishu.cn",
+    "receive_id_type": "chat_id",
+    "allowed_user_ids": [
+      "ou_replace_me"
+    ]
+  },
+  "projects": {
+    "codex-feishu-link": {
+      "name": "codex-feishu-link",
+      "workdir": "D:\\Codex Projects\\codex-feisu-link",
+      "branch_prefix": "codex/",
+      "description": "Local Feishu-controlled Codex orchestration workspace.",
+      "max_parallel_tasks": 1
+    }
+  }
+}

@@ -1,26 +1,19 @@
 # codex-feishu-link
 
-`codex-feishu-link` is a Windows-friendly control plane for running a local Codex CLI workflow from Feishu.
+`codex-feishu-link` is a Windows-friendly bridge between Feishu and a local Codex CLI workflow.
 
-The project is split into layers:
+It lets you control one or more local workspaces from Feishu messages, while keeping execution, logs, runtime state, and project routing on your own machine.
 
-- a core runtime that tracks projects, tasks, state, and single-writer scheduling per project
-- a public app layer that parses Feishu-style commands and routes them to a scheduler backend
-- a transport/runtime layer that can connect Feishu long-connection events and a local Codex executor
-- a bootstrap layer that composes the pieces into either a local REPL or a service process
+## What It Does
 
-## Current Layout
+- Receives Feishu messages through long connection mode
+- Parses a small, explicit command protocol
+- Schedules local Codex tasks per project
+- Keeps per-project single-writer execution semantics
+- Stores task state, runtime state, logs, and artifacts on disk
+- Supports foreground debugging and background service mode on Windows
 
-- `src/codex_feishu_link/models.py` defines the task, project, request, result, and runtime state models.
-- `src/codex_feishu_link/storage.py` persists task state as JSON on disk.
-- `src/codex_feishu_link/scheduler.py` manages queueing, task transitions, confirmations, and per-project single-writer admission.
-- `src/codex_feishu_link/commands.py` parses the supported chat command protocol.
-- `src/codex_feishu_link/feishu_adapter.py` normalizes Feishu payloads without making network calls.
-- `src/codex_feishu_link/bootstrap.py` builds the runtime and runs either the local REPL or a service loop.
-- `run-service.ps1` is the Windows launcher that chooses local or service mode from config and environment.
-- `config.example.json` is the starter configuration file for a Windows user.
-
-## Supported Commands
+## Core Commands
 
 - `projects`
 - `tasks [project]`
@@ -35,80 +28,110 @@ The project is split into layers:
 - `confirm <task_id> yes|no`
 - `snapshot <task_id>`
 
-## Windows Quick Start
+## Repository Layout
 
-1. Open `config.example.json` and fill in the placeholder values.
-2. Save your real config as `config.local.json` in the repo root, or point `CODEX_FEISHU_LINK_CONFIG` to a different file.
-3. Run the launcher:
+- `src/codex_feishu_link/models.py`: task, project, execution, and runtime models
+- `src/codex_feishu_link/storage.py`: JSON-backed state persistence
+- `src/codex_feishu_link/scheduler.py`: queueing, admission, confirmation, and task transitions
+- `src/codex_feishu_link/commands.py`: Feishu command parser
+- `src/codex_feishu_link/bootstrap.py`: local and service bootstrap entrypoints
+- `run-service.ps1`: foreground launcher
+- `start-background.ps1`: hidden background launcher
+- `service-status.ps1`: background service status
+- `stop-background.ps1`: stop the tracked background service
+- `stop-all.ps1`: stop every local `codex_feishu_link` process on this machine
+
+## Quick Start
+
+1. Create a virtual environment.
+2. Install the package and Feishu SDK.
+3. Generate `config.local.json`.
+4. Fill in machine-specific values.
+5. Start the background service.
+6. Send `projects` in Feishu to verify the bot is online.
 
 ```powershell
-.\run-service.ps1
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e . lark-oapi
+.\init-machine.ps1 -Force -MachineName $env:COMPUTERNAME -ProjectName "codex-feishu-link" -ProjectPath "$PWD"
+.\start-background.ps1
 ```
 
-4. Use `-Mode local` for the REPL smoke test, or run the module directly with:
+The PowerShell launcher still supports the direct module path and explicit modes:
 
 ```powershell
+.\run-service.ps1 -Mode local
+.\run-service.ps1 -Mode service
 python -m codex_feishu_link --mode local
+python -m codex_feishu_link --mode service --config ".\config.local.json"
 ```
 
-5. Use `-Mode service` once your Feishu credentials and runtime settings are ready.
+If you want to point the launcher at another config file, set `CODEX_FEISHU_LINK_CONFIG`.
 
-## Windows Background Service
+## Required Config Values
 
-For daily use on one machine, keep the foreground launcher for debugging and use the background launcher for normal operation.
-
-- Foreground debug run: `.\run-service.ps1 -Mode service`
-- Background run: `.\start-background.ps1`
-- Double-click run: `start-background.cmd`
-- Check background status: `.\service-status.ps1`
-- Stop background service: `.\stop-background.ps1`
-
-The background launcher starts a hidden PowerShell process, writes its PID to `.runtime\service\service.pid`, and stores logs in:
-
-- `.runtime\service\service.stdout.log`
-- `.runtime\service\service.stderr.log`
-
-For a repeatable multi-machine rollout, see [DEPLOYMENT.md](./DEPLOYMENT.md).
-
-## Required Values
-
-These are the values you still need to provide before the service can do real work:
+Before service mode can do real work, you need:
 
 - `feishu.app_id`
 - `feishu.app_secret`
 - `feishu.allowed_user_ids`
 - at least one project `workdir`
-- the `codex_executable` that matches your local Codex CLI installation
 
-Optional but useful values:
+The real local config should live in `config.local.json`. Do not commit that file.
 
-- `feishu.base_url`
-- `feishu.receive_id_type`
-- `codex_arguments`
-- `runtime_root`
-- `runtime_state_file`
-- `runtime_log_dir`
-- `runtime_artifact_dir`
-- `runtime_poll_interval_seconds`
+## Windows Operation
 
-## Environment Variables
+Daily-use commands:
 
-- `CODEX_FEISHU_LINK_CONFIG`
-- `CODEX_FEISHU_LINK_STATE_FILE`
-- `CODEX_FEISHU_LINK_RUNTIME_ROOT`
-- `CODEX_FEISHU_LINK_RUNTIME_STATE_FILE`
-- `CODEX_FEISHU_LINK_RUNTIME_LOG_DIR`
-- `CODEX_FEISHU_LINK_RUNTIME_ARTIFACT_DIR`
-- `CODEX_FEISHU_LINK_CODEX_EXECUTABLE`
-- `CODEX_FEISHU_LINK_CODEX_ARGUMENTS`
-- `CODEX_FEISHU_LINK_ALLOWED_USER_IDS`
-- `CODEX_FEISHU_LINK_COMMAND_TIMEOUT_SECONDS`
-- `CODEX_FEISHU_LINK_RUNTIME_POLL_INTERVAL_SECONDS`
-- `CODEX_FEISHU_LINK_PYTHON`
+```powershell
+.\start-background.ps1
+.\service-status.ps1
+.\stop-background.ps1
+.\stop-all.ps1
+```
+
+Foreground debugging:
+
+```powershell
+.\run-service.ps1 -Mode service
+```
+
+Double-click startup:
+
+- `start-background.cmd`
+
+## Auto Start On Login
+
+This repo includes a scheduled-task based auto-start setup for Windows login sessions.
+
+Register auto-start:
+
+```powershell
+.\register-autostart.ps1
+```
+
+Check task status:
+
+```powershell
+.\autostart-status.ps1
+```
+
+Remove auto-start:
+
+```powershell
+.\unregister-autostart.ps1
+```
+
+By default, the task launches `start-background.ps1` at user logon.
+
+## Documentation
+
+- [Chinese usage guide](./使用说明.md)
+- [Deployment guide](./DEPLOYMENT.md)
 
 ## Example Config
 
-The example config already includes the directories and object shapes the runtime expects. Update the placeholders before using service mode, or copy it to `config.local.json` and customize that file per machine.
+`config.example.json` shows the expected structure:
 
 ```json
 {
@@ -147,5 +170,3 @@ Run the test suite with:
 ```powershell
 python -m unittest discover -s tests -v
 ```
-
-The README example tests verify the sample config, the documented launcher commands, and the deployment guide link, while the bootstrap and integration tests cover the local REPL path and the service wiring contract.
